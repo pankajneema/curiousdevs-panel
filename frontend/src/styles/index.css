@@ -1,0 +1,119 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+/* Self-hosted, latin-only static instances — no third-party font request.
+   Two families: Inter (UI, headings, body) and JetBrains Mono (everything
+   attacker-influenceable — Console UI Brief, Part 1 rule 1). */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/inter-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/inter-500.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/inter-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/inter-700.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/jetbrains-mono-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/jetbrains-mono-700.woff2") format("woff2");
+}
+
+/* Tailwind v4 theme mapping — every colour, radius and font utility below
+   resolves to a tokens.css value. No hex outside tokens.css. */
+@theme {
+  --font-sans: "Inter", -apple-system, system-ui, sans-serif;
+  --font-machine: "JetBrains Mono", ui-monospace, Consolas, monospace;
+
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-deep: var(--deep);
+  --color-signal: var(--signal);
+  --color-signal-deep: var(--signal-deep);
+  --color-rule: var(--rule);
+  --color-slate: var(--slate);
+  --color-surface-2: var(--surface-2);
+
+  --color-verdict-allow: var(--verdict-allow);
+  --color-verdict-escalate: var(--verdict-escalate);
+  --color-verdict-block: var(--verdict-block);
+  --color-verdict-redact: var(--verdict-redact);
+  --color-verdict-sandbox: var(--verdict-sandbox);
+
+  /* Console overrides the marketing site's rounded corners with a sharp,
+     square edge everywhere — direct design feedback, including chips and
+     status badges that the brand book would otherwise pill-shape. */
+  --radius-control: 0px;
+  --radius-panel: 0px;
+  --radius-chip: 0px;
+}
+
+:root {
+  /* A card/panel tint one notch above paper — same derivation as the
+     marketing site, capped at 2% so signal/verdict text on it still clears
+     4.5:1 AA (measured with Lighthouse there; same rule applies here). */
+  --surface-2: color-mix(in oklab, var(--ink) 2%, var(--paper));
+}
+
+@layer base {
+  * {
+    border-color: var(--rule);
+  }
+
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    background-color: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: var(--leading-body);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--signal);
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
