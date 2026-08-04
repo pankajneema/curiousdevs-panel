@@ -32,4 +32,5 @@ class PaymentMethod(Base):
     last4: Mapped[str] = mapped_column(String, nullable=False)
     exp_month: Mapped[int] = mapped_column(Integer, nullable=False)
     exp_year: Mapped[int] = mapped_column(Integer, nullable=False)
+    holder_name: Mapped[str] = mapped_column(String, nullable=False, default="")
     added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))

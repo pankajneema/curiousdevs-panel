@@ -15,3 +15,9 @@ class Integration(Base):
     kind: Mapped[str] = mapped_column(String, nullable=False)
     label: Mapped[str] = mapped_column(String, nullable=False)
     connected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+
+    # Set by a background task right after connect — a real outbound check
+    # (or, for kinds with no live check available, a format-only pass).
+    status: Mapped[str] = mapped_column(String, nullable=False, default="pending")  # pending|verified|failed
+    status_detail: Mapped[str | None] = mapped_column(String, nullable=True)
+    checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

@@ -1,15 +1,17 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Check, CreditCard, Trash2 } from "lucide-react";
+import { Calendar, Check, CreditCard, Eye, EyeOff, Lock, Pencil, Trash2, User } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import {
   ApiError,
   addPaymentMethod,
   getBilling,
   getMyPaymentMethod,
+  getStoredSession,
   listAgents,
   removeMyPaymentMethod,
   upgradePlan,
@@ -27,15 +29,8 @@ function daysRemaining(iso: string | null): number | null {
   return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
 }
 
-function detectBrandLabel(digits: string): string {
-  if (digits.startsWith("34") || digits.startsWith("37")) return "AMEX";
-  if (digits.startsWith("5")) return "MASTERCARD";
-  if (digits.startsWith("4")) return "VISA";
-  return "CARD";
-}
-
 function formatCardNumber(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 19);
+  const digits = value.replace(/\D/g, "").slice(0, 16);
   return (digits.match(/.{1,4}/g) ?? []).join(" ");
 }
 
@@ -45,29 +40,90 @@ function formatExpiry(value: string): string {
   return `${digits.slice(0, 2)}/${digits.slice(2)}`;
 }
 
-function CardPreview({ cardNumber, expiry, cvc }: { cardNumber: string; expiry: string; cvc: string }) {
-  const digits = cardNumber.replace(/\D/g, "");
-  const groups = (digits.padEnd(16, "•").match(/.{1,4}/g) ?? []).map((g, i) =>
-    i < Math.ceil(digits.length / 4) ? g : "••••",
-  );
-  const brand = digits.length > 0 ? detectBrandLabel(digits) : "CARD";
+type CardBrand = "VISA" | "MASTERCARD" | "AMEX";
 
+function BrandMark({ brand, small }: { brand: CardBrand | null; small?: boolean }) {
+  if (brand === "MASTERCARD") {
+    return (
+      <span className={`relative flex shrink-0 ${small ? "h-4 w-7" : "h-5 w-8"}`}>
+        <span className={`absolute left-0 ${small ? "size-4" : "size-5"} bg-[#eb001b]`} />
+        <span className={`absolute ${small ? "left-2 size-4" : "left-2.5 size-5"} bg-[#f79e1b] mix-blend-multiply`} />
+      </span>
+    );
+  }
+  if (brand === "AMEX") {
+    return (
+      <span className={`bg-[#2e77bc] font-machine font-bold text-white ${small ? "px-1.5 py-0.5 text-[10px]" : "px-2 py-0.5 text-[11px]"}`}>
+        AMEX
+      </span>
+    );
+  }
+  if (brand === "VISA") {
+    return (
+      <span className={`font-machine font-black tracking-tight text-[#1434cb] italic ${small ? "text-[14px]" : "text-[20px]"}`}>
+        VISA
+      </span>
+    );
+  }
+  return <span className="font-machine text-[11px] font-bold tracking-[0.08em] text-[#8b93a3]">CARD</span>;
+}
+
+function detectBrand(digits: string): CardBrand | null {
+  if (digits.length === 0) return null;
+  if (digits.startsWith("34") || digits.startsWith("37")) return "AMEX";
+  if (digits.startsWith("5")) return "MASTERCARD";
+  if (digits.startsWith("4")) return "VISA";
+  return null;
+}
+
+/** The visual card frame — shared by the live "add card" preview and the
+ * read-only "view saved card" modal, since both display the same layout,
+ * just fed from different data (in-progress form fields vs. a fetched
+ * record with a masked number). */
+function CardFrame({
+  brand,
+  numberText,
+  holderText,
+  expiryText,
+  cvcText,
+}: {
+  brand: CardBrand | null;
+  numberText: string;
+  holderText: string;
+  expiryText: string;
+  cvcText?: string;
+}) {
   return (
-    <div className="relative flex aspect-[1.586/1] w-full max-w-[340px] flex-col justify-between bg-ink p-5 text-paper">
-      <div className="flex items-start justify-between">
-        <span className="size-7 border border-[var(--wordmark-silver)]/60" />
-        <span className="font-machine text-[13px] font-bold tracking-wide">{brand}</span>
-      </div>
-      <div>
-        <p className="font-machine text-[17px] tracking-[0.12em]">{groups.join("  ")}</p>
-        <div className="mt-3 flex items-center justify-between">
-          <div>
-            <p className="font-machine text-[8.5px] tracking-[0.14em] text-[var(--wordmark-silver)] uppercase">Expires</p>
-            <p className="font-machine text-[12px]">{expiry || "MM/YY"}</p>
-          </div>
-          <div>
-            <p className="font-machine text-[8.5px] tracking-[0.14em] text-[var(--wordmark-silver)] uppercase">CVC</p>
-            <p className="font-machine text-[12px]">{cvc ? "•".repeat(cvc.length) : "•••"}</p>
+    <div className="relative aspect-[1.586/1] w-full max-w-[360px] overflow-hidden border-l-[3px] border-signal bg-gradient-to-br from-[#eef0f5] via-[#e3e7ee] to-[#c9d0dc] p-5 text-ink shadow-[0_20px_44px_-18px_rgba(20,30,50,0.35)]">
+      {/* diagonal glass shine, plus a hairline edge highlight */}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-transparent via-white/40 to-transparent" />
+      <div className="pointer-events-none absolute inset-0 border border-white/50" />
+
+      <div className="relative flex h-full flex-col justify-between">
+        <div className="flex items-start justify-between">
+          <div className="h-7 w-9 bg-gradient-to-br from-[#f2f3f5] via-[#c7ccd6] to-[#9aa1af]" />
+          <BrandMark brand={brand} />
+        </div>
+
+        <div>
+          <p className="font-machine text-[19px] tracking-[0.12em] text-[#1a2333]">{numberText}</p>
+          <div className="mt-3.5 flex items-end justify-between gap-3">
+            <div className="min-w-0">
+              <p className="font-machine text-[8px] tracking-[0.16em] text-[#5a6472] uppercase">Card holder</p>
+              <p className="mt-0.5 truncate font-machine text-[12px] font-semibold tracking-[0.02em] text-[#1a2333] uppercase">
+                {holderText}
+              </p>
+            </div>
+            <div className="shrink-0 text-right">
+              <p className="font-machine text-[8px] tracking-[0.16em] text-[#5a6472] uppercase">Expires</p>
+              <p className="mt-0.5 font-machine text-[12.5px] font-semibold text-[#1a2333]">{expiryText}</p>
+            </div>
+            {cvcText !== undefined && (
+              <div className="shrink-0 text-right">
+                <p className="font-machine text-[8px] tracking-[0.16em] text-[#5a6472] uppercase">CVV</p>
+                <p className="mt-0.5 font-machine text-[12.5px] font-semibold text-[#1a2333]">{cvcText}</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -75,12 +131,120 @@ function CardPreview({ cardNumber, expiry, cvc }: { cardNumber: string; expiry: 
   );
 }
 
-function AddCardForm({ onAdded, onCancel }: { onAdded: () => void; onCancel: () => void }) {
+function CardPreview({
+  cardNumber,
+  expiry,
+  cvc,
+  holderName,
+  brand,
+}: {
+  cardNumber: string;
+  expiry: string;
+  cvc: string;
+  holderName: string;
+  brand: CardBrand | null;
+}) {
+  const digits = cardNumber.replace(/\D/g, "");
+  const groups = (digits.padEnd(16, "•").match(/.{1,4}/g) ?? []).map((g, i) =>
+    i < Math.ceil(digits.length / 4) ? g : "••••",
+  );
+
+  return (
+    <CardFrame
+      brand={brand}
+      numberText={groups.join("  ")}
+      holderText={holderName || "YOUR NAME"}
+      expiryText={expiry || "MM/YY"}
+      cvcText={cvc ? "•".repeat(cvc.length) : "•••"}
+    />
+  );
+}
+
+function paymentMethodBrand(brand: PaymentMethod["brand"]): CardBrand | null {
+  if (brand === "Visa") return "VISA";
+  if (brand === "Mastercard") return "MASTERCARD";
+  if (brand === "American Express") return "AMEX";
+  return null;
+}
+
+function SavedCardPreview({ paymentMethod }: { paymentMethod: PaymentMethod }) {
+  return (
+    <CardFrame
+      brand={paymentMethodBrand(paymentMethod.brand)}
+      numberText={`•••• •••• •••• ${paymentMethod.last4}`}
+      holderText={paymentMethod.holderName || "—"}
+      expiryText={`${String(paymentMethod.expMonth).padStart(2, "0")}/${String(paymentMethod.expYear).slice(-2)}`}
+    />
+  );
+}
+
+function CardTypeIndicator({
+  active,
+  onSelect,
+}: {
+  active: CardBrand | null;
+  onSelect: (brand: CardBrand) => void;
+}) {
+  const options: CardBrand[] = ["VISA", "MASTERCARD", "AMEX"];
+
+  return (
+    <div>
+      <p className="mb-1.5 text-[12.5px] font-medium text-ink">Card type</p>
+      <p className="mb-2 text-[11px] text-slate">Detected from the number, or pick one directly.</p>
+      <div className="grid grid-cols-3 gap-2">
+        {options.map((id) => {
+          const isActive = active === id;
+          return (
+            <button
+              type="button"
+              key={id}
+              onClick={() => onSelect(id)}
+              className={[
+                "flex items-center justify-between gap-2 border px-2.5 py-2",
+                isActive ? "border-signal bg-signal/5" : "border-rule opacity-50 hover:opacity-80",
+              ].join(" ")}
+            >
+              <BrandMark brand={id} small />
+              <span
+                className={[
+                  "flex size-3.5 shrink-0 items-center justify-center border",
+                  isActive ? "border-signal" : "border-rule",
+                ].join(" ")}
+              >
+                {isActive && <span className="size-1.5 bg-signal" />}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function AddCardForm({
+  initialHolderName,
+  onAdded,
+  onCancel,
+}: {
+  initialHolderName?: string | undefined;
+  onAdded: () => void;
+  onCancel: () => void;
+}) {
+  const [holderName, setHolderName] = useState(initialHolderName || getStoredSession()?.user.name || "");
   const [cardNumber, setCardNumber] = useState("");
   const [expiry, setExpiry] = useState("");
   const [cvc, setCvc] = useState("");
+  const [showCvc, setShowCvc] = useState(false);
+  const [manualBrand, setManualBrand] = useState<CardBrand | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const cardDigits = cardNumber.replace(/\D/g, "");
+  const cardNumberComplete = cardDigits.length === 16;
+  // Typing a real number is a stronger signal than a prior manual pick, so
+  // detection wins once there are digits to detect from; picking a type
+  // directly (e.g. before typing) is what drives the icon otherwise.
+  const brand = detectBrand(cardDigits) ?? manualBrand;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -94,7 +258,7 @@ function AddCardForm({ onAdded, onCancel }: { onAdded: () => void; onCancel: () 
     const expYear = match[2]!.length === 2 ? 2000 + Number(match[2]) : Number(match[2]);
     setSubmitting(true);
     try {
-      await addPaymentMethod({ cardNumber, expMonth, expYear, cvc });
+      await addPaymentMethod({ cardNumber, expMonth, expYear, cvc, holderName });
       onAdded();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");
@@ -104,31 +268,50 @@ function AddCardForm({ onAdded, onCancel }: { onAdded: () => void; onCancel: () 
   }
 
   return (
-    <form className="border-t border-rule px-5 py-4" onSubmit={handleSubmit} noValidate>
+    <form className="border-t border-rule px-5 py-5" onSubmit={handleSubmit} noValidate>
       {error && (
         <p role="alert" className="mb-3 border border-verdict-block/30 bg-verdict-block/10 px-3 py-2 text-[13px] text-ink">
           {error}
         </p>
       )}
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
-        <CardPreview cardNumber={cardNumber} expiry={expiry} cvc={cvc} />
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+        <div className="flex w-full flex-col gap-4 lg:max-w-[360px]">
+          <CardPreview cardNumber={cardNumber} expiry={expiry} cvc={cvc} holderName={holderName} brand={brand} />
+          <CardTypeIndicator active={brand} onSelect={setManualBrand} />
+        </div>
+
         <div className="flex-1">
-          <Field label="Card number" htmlFor="card-number">
+          <Field label="Cardholder name" htmlFor="card-holder">
             <Input
-              id="card-number"
-              inputMode="numeric"
-              placeholder="4242 4242 4242 4242"
-              value={cardNumber}
-              onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
+              id="card-holder"
+              placeholder="Jane Doe"
+              icon={<User className="size-[15px]" />}
+              value={holderName}
+              onChange={(e) => setHolderName(e.target.value)}
               required
             />
           </Field>
+          <div className="mt-3">
+            <Field label="Card number" htmlFor="card-number">
+              <Input
+                id="card-number"
+                inputMode="numeric"
+                placeholder="4242 4242 4242 4242"
+                icon={<CreditCard className="size-[15px]" />}
+                value={cardNumber}
+                onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
+                trailing={cardNumberComplete ? <Check className="size-[15px] text-verdict-allow" /> : undefined}
+                required
+              />
+            </Field>
+          </div>
           <div className="mt-3 grid grid-cols-2 gap-3">
-            <Field label="Expiry" htmlFor="card-expiry">
+            <Field label="Expiry date" htmlFor="card-expiry">
               <Input
                 id="card-expiry"
                 inputMode="numeric"
                 placeholder="MM/YY"
+                icon={<Calendar className="size-[15px]" />}
                 value={expiry}
                 onChange={(e) => setExpiry(formatExpiry(e.target.value))}
                 required
@@ -137,27 +320,54 @@ function AddCardForm({ onAdded, onCancel }: { onAdded: () => void; onCancel: () 
             <Field label="CVC" htmlFor="card-cvc">
               <Input
                 id="card-cvc"
+                type={showCvc ? "text" : "password"}
                 inputMode="numeric"
                 placeholder="123"
+                icon={<Lock className="size-[15px]" />}
                 value={cvc}
                 onChange={(e) => setCvc(e.target.value.replace(/\D/g, "").slice(0, 4))}
                 required
+                trailing={
+                  <button
+                    type="button"
+                    onClick={() => setShowCvc((v) => !v)}
+                    className="text-slate hover:text-ink"
+                    aria-label={showCvc ? "Hide security code" : "Show security code"}
+                  >
+                    {showCvc ? <EyeOff className="size-[15px]" /> : <Eye className="size-[15px]" />}
+                  </button>
+                }
               />
             </Field>
           </div>
-          <div className="mt-4 flex gap-3">
-            <Button type="submit" size="sm" disabled={submitting}>
-              {submitting ? "Saving…" : "Save card"}
-            </Button>
-            <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+          <div className="mt-5 flex gap-3">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={onCancel}
+              className="flex-1 border-verdict-block/40 text-verdict-block hover:bg-verdict-block/5"
+            >
               Cancel
             </Button>
+            <Button
+              type="submit"
+              variant="secondary"
+              size="sm"
+              disabled={submitting}
+              className="flex-1 border-signal text-signal hover:bg-signal/5"
+            >
+              {submitting ? "Saving…" : initialHolderName ? "Update card" : "Save card"}
+            </Button>
           </div>
+          <p className="mt-3 flex items-center gap-1.5 text-[11.5px] text-slate">
+            <Lock className="size-[11px]" />
+            {initialHolderName
+              ? "Saving replaces your existing card. Nothing is charged — any card-shaped number works."
+              : "Mock console — nothing is charged. Any card-shaped number works."}
+          </p>
         </div>
       </div>
-      <p className="mt-3 text-[11.5px] text-slate">
-        Mock console — nothing is charged. Any card-shaped number works.
-      </p>
     </form>
   );
 }
@@ -241,6 +451,7 @@ function BillingPage() {
   const [agents, setAgents] = useState<Agent[] | null>(null);
   const [paymentMethod, setPaymentMethodState] = useState<PaymentMethod | null>(null);
   const [addingCard, setAddingCard] = useState(false);
+  const [viewingCard, setViewingCard] = useState(false);
   const [upgrading, setUpgrading] = useState(false);
 
   async function refresh() {
@@ -264,7 +475,7 @@ function BillingPage() {
   const callVolume24h = agents?.reduce((sum, a) => sum + a.callVolume24h, 0) ?? null;
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-8">
+    <div className="mx-auto max-w-7xl px-5 py-8">
       <p className="text-[13.5px] text-slate">Plan, usage and payment for this organization.</p>
 
       {billing === null ? (
@@ -342,12 +553,26 @@ function BillingPage() {
                 </p>
               </div>
               {paymentMethod ? (
-                <button
-                  onClick={handleRemoveCard}
-                  className="flex items-center gap-1.5 border border-rule px-2.5 py-1.5 text-[12px] font-medium text-slate hover:border-verdict-block/40 hover:text-verdict-block"
-                >
-                  <Trash2 className="size-[13px]" /> Remove
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setViewingCard(true)}
+                    className="flex items-center gap-1.5 border border-rule px-2.5 py-1.5 text-[12px] font-medium text-slate hover:text-ink"
+                  >
+                    <Eye className="size-[13px]" /> View
+                  </button>
+                  <button
+                    onClick={() => setAddingCard((v) => !v)}
+                    className="flex items-center gap-1.5 border border-rule px-2.5 py-1.5 text-[12px] font-medium text-slate hover:text-ink"
+                  >
+                    <Pencil className="size-[13px]" /> Edit
+                  </button>
+                  <button
+                    onClick={handleRemoveCard}
+                    className="flex items-center gap-1.5 border border-rule px-2.5 py-1.5 text-[12px] font-medium text-slate hover:border-verdict-block/40 hover:text-verdict-block"
+                  >
+                    <Trash2 className="size-[13px]" /> Remove
+                  </button>
+                </div>
               ) : (
                 !addingCard && (
                   <Button variant="secondary" size="sm" onClick={() => setAddingCard(true)}>
@@ -358,12 +583,18 @@ function BillingPage() {
             </div>
             {addingCard && (
               <AddCardForm
+                initialHolderName={paymentMethod?.holderName}
                 onCancel={() => setAddingCard(false)}
                 onAdded={async () => {
                   setAddingCard(false);
                   await refresh();
                 }}
               />
+            )}
+            {viewingCard && paymentMethod && (
+              <Modal title="Payment method" subtitle="Read-only — use Edit to change it." onClose={() => setViewingCard(false)}>
+                <SavedCardPreview paymentMethod={paymentMethod} />
+              </Modal>
             )}
           </Card>
 

@@ -117,7 +117,7 @@ function NotificationsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-8">
+    <div className="mx-auto max-w-7xl px-5 py-8">
       <h1 className="text-[22px] font-bold tracking-[-0.01em] text-ink">Notifications</h1>
       <p className="mt-1 text-[13.5px] text-slate">Choose what you hear about, and where.</p>
 

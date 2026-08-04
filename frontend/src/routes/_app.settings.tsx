@@ -8,8 +8,8 @@ export const Route = createFileRoute("/_app/settings")({
 function SettingsLayout() {
   return (
     <div>
-      <div className="px-6 pt-6">
-        <h1 className="mx-auto max-w-5xl text-[22px] font-bold tracking-[-0.01em] text-ink">Settings</h1>
+      <div className="px-5 pt-6">
+        <h1 className="mx-auto max-w-7xl text-[22px] font-bold tracking-[-0.01em] text-ink">Settings</h1>
       </div>
       <div className="mt-4">
         <SettingsTabs />

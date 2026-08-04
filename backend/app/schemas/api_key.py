@@ -8,6 +8,7 @@ class ApiKeyOut(CamelModel):
     name: str
     prefix: str
     status: str
+    agent_id: str | None
     created_at: datetime
     expires_at: datetime | None
     last_used_at: datetime | None

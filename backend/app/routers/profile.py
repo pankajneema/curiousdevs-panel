@@ -4,10 +4,10 @@ from fastapi import APIRouter
 
 from app.deps import CurrentUser, DbSession
 from app.errors import api_error
-from app.models import Organization, User
-from app.routers.auth import EMAIL_PATTERN, USERNAME_PATTERN, _issue_session  # noqa: F401
+from app.models import User
+from app.routers.auth import USERNAME_PATTERN, _issue_session
 from app.schemas.common import SessionOut
-from app.schemas.profile import ChangePasswordIn, UpdateAvatarIn, UpdateOrganizationIn, UpdateProfileIn
+from app.schemas.profile import ChangePasswordIn, UpdateAvatarIn, UpdateProfileIn
 from app.security import hash_secret, verify_secret
 
 router = APIRouter(tags=["profile"])
@@ -54,14 +54,3 @@ def change_password(payload: ChangePasswordIn, current_user: CurrentUser, db: Db
         raise api_error("Current password is incorrect.", "currentPassword")
     current_user.password_hash = hash_secret(payload.new_password)
     db.commit()
-
-
-@router.patch("/organization", response_model=SessionOut)
-def update_organization(payload: UpdateOrganizationIn, current_user: CurrentUser, db: DbSession) -> SessionOut:
-    if len(payload.name.strip()) < 1:
-        raise api_error("Enter an organization name.", "name")
-    org = db.get(Organization, current_user.organization_id)
-    org.name = payload.name.strip()
-    db.commit()
-    db.refresh(current_user)
-    return _issue_session(db, current_user)

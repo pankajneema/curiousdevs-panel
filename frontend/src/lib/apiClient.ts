@@ -1,4 +1,4 @@
-const API_BASE_URL: string = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+export const API_BASE_URL: string = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 const SESSION_KEY = "agentguard_console_session";
 
 export class ApiError extends Error {
@@ -70,5 +70,5 @@ export const api = {
   post: <T>(path: string, body?: unknown) => request<T>("POST", path, body),
   patch: <T>(path: string, body?: unknown) => request<T>("PATCH", path, body),
   put: <T>(path: string, body?: unknown) => request<T>("PUT", path, body),
-  delete: <T>(path: string) => request<T>("DELETE", path),
+  delete: <T>(path: string, body?: unknown) => request<T>("DELETE", path, body),
 };

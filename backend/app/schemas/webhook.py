@@ -9,6 +9,10 @@ class WebhookOut(CamelModel):
     events: list[str]
     enabled: bool
     created_at: datetime
+    signing_secret: str
+    status: str
+    status_detail: str | None
+    checked_at: datetime | None
 
 
 class CreateWebhookIn(CamelModel):

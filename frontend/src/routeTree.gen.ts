@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
+import { Route as AcceptInviteRouteImport } from './routes/accept-invite'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
@@ -24,6 +25,7 @@ import { Route as AppNotificationsRouteImport } from './routes/_app.notification
 import { Route as AppPoliciesRouteImport } from './routes/_app.policies'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppTeamRouteImport } from './routes/_app.team'
+import { Route as AppAgentsAgentIdRouteImport } from './routes/_app.agents_.$agentId'
 import { Route as AppSettingsIndexRouteImport } from './routes/_app.settings.index'
 import { Route as AppSettingsAccountRouteImport } from './routes/_app.settings.account'
 import { Route as AppSettingsBillingRouteImport } from './routes/_app.settings.billing'
@@ -38,6 +40,11 @@ import { Route as AppTeamRolesRouteImport } from './routes/_app.team.roles'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AcceptInviteRoute = AcceptInviteRouteImport.update({
+  id: '/accept-invite',
+  path: '/accept-invite',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -110,6 +117,11 @@ const AppTeamRoute = AppTeamRouteImport.update({
   path: '/team',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAgentsAgentIdRoute = AppAgentsAgentIdRouteImport.update({
+  id: '/agents_/$agentId',
+  path: '/agents/$agentId',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -168,6 +180,7 @@ const AppTeamRolesRoute = AppTeamRolesRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
+  '/accept-invite': typeof AcceptInviteRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/agents': typeof AppAgentsRoute
@@ -181,6 +194,7 @@ export interface FileRoutesByFullPath {
   '/policies': typeof AppPoliciesRoute
   '/settings': typeof AppSettingsRouteWithChildren
   '/team': typeof AppTeamRouteWithChildren
+  '/agents/$agentId': typeof AppAgentsAgentIdRoute
   '/settings/account': typeof AppSettingsAccountRoute
   '/settings/billing': typeof AppSettingsBillingRoute
   '/settings/organization': typeof AppSettingsOrganizationRoute
@@ -194,6 +208,7 @@ export interface FileRoutesByFullPath {
   '/team/': typeof AppTeamIndexRoute
 }
 export interface FileRoutesByTo {
+  '/accept-invite': typeof AcceptInviteRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/agents': typeof AppAgentsRoute
@@ -206,6 +221,7 @@ export interface FileRoutesByTo {
   '/notifications': typeof AppNotificationsRoute
   '/policies': typeof AppPoliciesRoute
   '/': typeof AppIndexRoute
+  '/agents/$agentId': typeof AppAgentsAgentIdRoute
   '/settings/account': typeof AppSettingsAccountRoute
   '/settings/billing': typeof AppSettingsBillingRoute
   '/settings/organization': typeof AppSettingsOrganizationRoute
@@ -221,6 +237,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
+  '/accept-invite': typeof AcceptInviteRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/_app/agents': typeof AppAgentsRoute
@@ -235,6 +252,7 @@ export interface FileRoutesById {
   '/_app/settings': typeof AppSettingsRouteWithChildren
   '/_app/team': typeof AppTeamRouteWithChildren
   '/_app/': typeof AppIndexRoute
+  '/_app/agents_/$agentId': typeof AppAgentsAgentIdRoute
   '/_app/settings/account': typeof AppSettingsAccountRoute
   '/_app/settings/billing': typeof AppSettingsBillingRoute
   '/_app/settings/organization': typeof AppSettingsOrganizationRoute
@@ -251,6 +269,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/accept-invite'
     | '/login'
     | '/register'
     | '/agents'
@@ -264,6 +283,7 @@ export interface FileRouteTypes {
     | '/policies'
     | '/settings'
     | '/team'
+    | '/agents/$agentId'
     | '/settings/account'
     | '/settings/billing'
     | '/settings/organization'
@@ -277,6 +297,7 @@ export interface FileRouteTypes {
     | '/team/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/accept-invite'
     | '/login'
     | '/register'
     | '/agents'
@@ -289,6 +310,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/policies'
     | '/'
+    | '/agents/$agentId'
     | '/settings/account'
     | '/settings/billing'
     | '/settings/organization'
@@ -303,6 +325,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_app'
+    | '/accept-invite'
     | '/login'
     | '/register'
     | '/_app/agents'
@@ -317,6 +340,7 @@ export interface FileRouteTypes {
     | '/_app/settings'
     | '/_app/team'
     | '/_app/'
+    | '/_app/agents_/$agentId'
     | '/_app/settings/account'
     | '/_app/settings/billing'
     | '/_app/settings/organization'
@@ -332,6 +356,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
+  AcceptInviteRoute: typeof AcceptInviteRoute
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
 }
@@ -343,6 +368,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/accept-invite': {
+      id: '/accept-invite'
+      path: '/accept-invite'
+      fullPath: '/accept-invite'
+      preLoaderRoute: typeof AcceptInviteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -441,6 +473,13 @@ declare module '@tanstack/react-router' {
       path: '/team'
       fullPath: '/team'
       preLoaderRoute: typeof AppTeamRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/agents_/$agentId': {
+      id: '/_app/agents_/$agentId'
+      path: '/agents/$agentId'
+      fullPath: '/agents/$agentId'
+      preLoaderRoute: typeof AppAgentsAgentIdRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/settings/': {
@@ -577,6 +616,7 @@ interface AppRouteChildren {
   AppSettingsRoute: typeof AppSettingsRouteWithChildren
   AppTeamRoute: typeof AppTeamRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
+  AppAgentsAgentIdRoute: typeof AppAgentsAgentIdRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -592,12 +632,14 @@ const AppRouteChildren: AppRouteChildren = {
   AppSettingsRoute: AppSettingsRouteWithChildren,
   AppTeamRoute: AppTeamRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
+  AppAgentsAgentIdRoute: AppAgentsAgentIdRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
+  AcceptInviteRoute: AcceptInviteRoute,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
 }

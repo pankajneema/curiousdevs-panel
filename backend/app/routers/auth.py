@@ -1,4 +1,5 @@
 import re
+import secrets
 from datetime import UTC, datetime, timedelta
 
 import pyotp
@@ -21,6 +22,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 USERNAME_PATTERN = re.compile(r"^[a-z0-9](?:[a-z0-9._-]{1,30}[a-z0-9])?$", re.IGNORECASE)
+DATA_RESIDENCIES = {"us", "eu", "in"}
 
 
 def _issue_session(db: Session, user: User) -> SessionOut:
@@ -55,9 +57,16 @@ def register(payload: RegisterIn, request: Request, db: DbSession) -> SessionOut
         raise api_error("Enter your name.", "name")
     if len(payload.organization_name.strip()) < 1:
         raise api_error("Enter your organization's name.", "organizationName")
+    if payload.data_residency not in DATA_RESIDENCIES:
+        raise api_error("Choose a valid data residency.", "dataResidency")
 
     domain = email.split("@")[-1]
-    org = Organization(name=payload.organization_name.strip(), domain=domain)
+    org = Organization(
+        name=payload.organization_name.strip(),
+        domain=domain,
+        data_residency=payload.data_residency,
+        domain_verify_token=secrets.token_hex(12),
+    )
     db.add(org)
     db.flush()
 

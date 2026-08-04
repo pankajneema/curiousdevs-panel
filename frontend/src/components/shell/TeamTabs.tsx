@@ -10,8 +10,8 @@ export function TeamTabs() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   return (
-    <div className="border-b border-rule px-6">
-      <nav className="mx-auto flex max-w-3xl gap-5">
+    <div className="border-b border-rule px-5">
+      <nav className="mx-auto flex max-w-7xl gap-5">
         {tabs.map((tab) => {
           const isActive = pathname.startsWith(tab.to);
           return (

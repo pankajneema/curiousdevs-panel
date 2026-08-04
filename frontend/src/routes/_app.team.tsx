@@ -10,9 +10,9 @@ function TeamLayout() {
   const session = getStoredSession()!;
   return (
     <div>
-      <div className="px-6 pt-6">
-        <h1 className="mx-auto max-w-3xl text-[22px] font-bold tracking-[-0.01em] text-ink">Team</h1>
-        <p className="mx-auto max-w-3xl mt-1 text-[13.5px] text-slate">
+      <div className="px-5 pt-6">
+        <h1 className="mx-auto max-w-7xl text-[22px] font-bold tracking-[-0.01em] text-ink">Team</h1>
+        <p className="mx-auto max-w-7xl mt-1 text-[13.5px] text-slate">
           Who has access to {session.organization.name}.
         </p>
       </div>

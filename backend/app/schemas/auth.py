@@ -8,6 +8,7 @@ class RegisterIn(CamelModel):
     email: str
     password: str
     organization_name: str
+    data_residency: str = "in"
 
 
 class LoginIn(CamelModel):

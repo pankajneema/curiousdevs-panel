@@ -49,7 +49,7 @@ function PreferencesPage() {
   const { preferences, setPreferences } = usePreferences();
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-8">
+    <div className="mx-auto max-w-7xl px-5 py-8">
       <p className="text-[13.5px] text-slate">How the console looks and behaves for you, on this device.</p>
 
       <Card className="mt-6 p-0">

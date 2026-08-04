@@ -13,6 +13,7 @@ class GroupOut(CamelModel):
 
 class CreateGroupIn(CamelModel):
     name: str
+    member_user_ids: list[str] = []
 
 
 class UpdateGroupMembersIn(CamelModel):

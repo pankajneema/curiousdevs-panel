@@ -19,6 +19,7 @@ class PaymentMethodOut(CamelModel):
     last4: str
     exp_month: int
     exp_year: int
+    holder_name: str
 
 
 class AddPaymentMethodIn(CamelModel):
@@ -26,3 +27,4 @@ class AddPaymentMethodIn(CamelModel):
     exp_month: int
     exp_year: int
     cvc: str
+    holder_name: str

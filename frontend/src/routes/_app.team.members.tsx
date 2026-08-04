@@ -13,10 +13,25 @@ import {
   listTeam,
   removeTeamMember,
   revokeTeamInvitation,
+  subscribeToOrgEvents,
   updateMemberRole,
 } from "@/lib/api";
 import { resolveRoleName } from "@/lib/roles";
 import type { CustomRole, Invitation, Role, RoleId, User } from "@/lib/types";
+
+function EmailStatusBadge({ status }: { status: Invitation["emailStatus"] }) {
+  if (status === "sent") {
+    return (
+      <span className="font-machine text-[10px] tracking-wide text-verdict-allow uppercase">Email sent</span>
+    );
+  }
+  if (status === "failed") {
+    return (
+      <span className="font-machine text-[10px] tracking-wide text-verdict-block uppercase">Delivery failed</span>
+    );
+  }
+  return <span className="font-machine text-[10px] tracking-wide text-slate uppercase">Sending…</span>;
+}
 
 export const Route = createFileRoute("/_app/team/members")({
   component: MembersPage,
@@ -34,6 +49,9 @@ function MembersPage() {
   const [inviting, setInviting] = useState(false);
 
   const allRoles = [...builtInRoles, ...customRoles.map((r) => ({ id: r.id, name: r.name }))];
+  // The owner role is set once at registration and never reassigned — there's
+  // always exactly one, so it's never offered as an invite or role-change option.
+  const assignableRoles = allRoles.filter((r) => r.id !== "owner");
 
   async function refresh() {
     const [{ members, invitations }, { builtIn, custom }] = await Promise.all([listTeam(), listRoles()]);
@@ -45,6 +63,18 @@ function MembersPage() {
 
   useEffect(() => {
     refresh();
+  }, []);
+
+  useEffect(() => {
+    // Live push when a queued invite email finishes sending, instead of
+    // polling — flips "Sending…" to "Email sent"/"Delivery failed" in place.
+    return subscribeToOrgEvents((event) => {
+      if (event.type === "invitation.email_status") {
+        setInvitations((prev) =>
+          prev.map((inv) => (inv.id === event.invitationId ? { ...inv, emailStatus: event.status } : inv)),
+        );
+      }
+    });
   }, []);
 
   async function handleInvite(e: FormEvent) {
@@ -87,7 +117,7 @@ function MembersPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-8">
+    <div className="mx-auto max-w-7xl px-5 py-8">
       <Card className="p-6">
         <p className="text-[13px] font-semibold text-ink">Invite a teammate</p>
         <form className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end" onSubmit={handleInvite} noValidate>
@@ -112,7 +142,7 @@ function MembersPage() {
                 onChange={(e) => setRole(e.target.value)}
                 className="h-11 w-full border border-rule bg-paper px-3.5 text-[15px] text-ink focus:border-signal focus:outline-none focus:ring-2 focus:ring-signal/30"
               >
-                {allRoles.map((r) => (
+                {assignableRoles.map((r) => (
                   <option key={r.id} value={r.id}>
                     {r.name}
                   </option>
@@ -143,12 +173,15 @@ function MembersPage() {
                   <p className="text-[13.5px] font-medium text-ink">{inv.email}</p>
                   <p className="text-[12px] text-slate">Invited as {resolveRoleName(inv.role, customRoles)}</p>
                 </div>
-                <button
-                  onClick={() => handleRevoke(inv.id)}
-                  className="flex items-center gap-1.5 border border-rule px-2.5 py-1.5 text-[12px] font-medium text-slate hover:border-verdict-block/40 hover:text-verdict-block"
-                >
-                  <X className="size-[13px]" /> Revoke
-                </button>
+                <div className="flex items-center gap-4">
+                  <EmailStatusBadge status={inv.emailStatus} />
+                  <button
+                    onClick={() => handleRevoke(inv.id)}
+                    className="flex items-center gap-1.5 border border-rule px-2.5 py-1.5 text-[12px] font-medium text-slate hover:border-verdict-block/40 hover:text-verdict-block"
+                  >
+                    <X className="size-[13px]" /> Revoke
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -179,7 +212,7 @@ function MembersPage() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                {member.id === session.user.id ? (
+                {member.role === "owner" || member.id === session.user.id ? (
                   <span className="rounded-[var(--radius-chip)] border border-rule px-2.5 py-0.5 font-machine text-[10px] tracking-wide text-slate uppercase">
                     {resolveRoleName(member.role, customRoles)}
                   </span>
@@ -189,14 +222,14 @@ function MembersPage() {
                     onChange={(e) => handleRoleChange(member.id, e.target.value)}
                     className="border border-rule bg-paper px-2 py-1 font-machine text-[11px] text-ink"
                   >
-                    {allRoles.map((r) => (
+                    {assignableRoles.map((r) => (
                       <option key={r.id} value={r.id}>
                         {r.name}
                       </option>
                     ))}
                   </select>
                 )}
-                {member.id !== session.user.id && (
+                {member.role !== "owner" && member.id !== session.user.id && (
                   <button
                     onClick={() => handleRemove(member.id)}
                     className="text-[12px] font-medium text-slate hover:text-verdict-block"

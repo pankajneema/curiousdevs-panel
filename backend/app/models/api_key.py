@@ -13,6 +13,10 @@ class ApiKey(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: new_id("key"))
     organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
     created_by_user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    # None = an org-wide key (Developer page) usable for any agent in the
+    # org. Set = scoped to exactly one agent — that agent's own SDK
+    # shouldn't hold a credential that can also act as every other agent.
+    agent_id: Mapped[str | None] = mapped_column(ForeignKey("agents.id", ondelete="CASCADE"), nullable=True, index=True)
 
     name: Mapped[str] = mapped_column(String, nullable=False)
     prefix: Mapped[str] = mapped_column(String, nullable=False)

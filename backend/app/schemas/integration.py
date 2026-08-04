@@ -9,6 +9,9 @@ class IntegrationOut(CamelModel):
     kind: str
     label: str
     connected_at: datetime
+    status: str
+    status_detail: str | None
+    checked_at: datetime | None
 
 
 class ConnectIntegrationIn(CamelModel):

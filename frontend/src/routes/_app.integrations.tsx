@@ -1,6 +1,16 @@
 import { useEffect, useState, type ComponentType, type FormEvent } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { MessageSquare, Plus, RadioTower, Siren, LockKeyhole, Trash2, Webhook as WebhookIcon } from "lucide-react";
+import {
+  Check,
+  Copy,
+  MessageSquare,
+  Plus,
+  RadioTower,
+  Siren,
+  LockKeyhole,
+  Trash2,
+  Webhook as WebhookIcon,
+} from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
@@ -13,8 +23,9 @@ import {
   disconnectMyIntegration,
   listMyIntegrations,
   listMyWebhooks,
+  subscribeToOrgEvents,
 } from "@/lib/api";
-import type { Integration, IntegrationKind, Webhook } from "@/lib/types";
+import type { ConnectionStatus, Integration, IntegrationKind, Webhook } from "@/lib/types";
 
 export const Route = createFileRoute("/_app/integrations")({
   component: IntegrationsPage,
@@ -38,8 +49,8 @@ const integrationConfigs: IntegrationConfig[] = [
     icon: MessageSquare,
     title: "Slack",
     description: "Escalations and alerts in a channel.",
-    fieldLabel: "Workspace name",
-    placeholder: "acme-corp",
+    fieldLabel: "Incoming webhook URL",
+    placeholder: "https://hooks.slack.com/services/…",
     group: "Alerts & approvals",
   },
   {
@@ -47,8 +58,8 @@ const integrationConfigs: IntegrationConfig[] = [
     icon: MessageSquare,
     title: "Microsoft Teams",
     description: "Escalations and alerts in a channel.",
-    fieldLabel: "Team name",
-    placeholder: "Security Team",
+    fieldLabel: "Incoming webhook URL",
+    placeholder: "https://….webhook.office.com/…",
     group: "Alerts & approvals",
   },
   {
@@ -79,6 +90,37 @@ const integrationConfigs: IntegrationConfig[] = [
     group: "Data & security",
   },
 ];
+
+function StatusBadge({ status, detail }: { status: ConnectionStatus; detail: string | null }) {
+  if (status === "pending") {
+    return (
+      <span
+        title={detail ?? undefined}
+        className="border border-rule px-2 py-0.5 font-machine text-[10px] tracking-wide text-slate uppercase"
+      >
+        Checking…
+      </span>
+    );
+  }
+  if (status === "verified") {
+    return (
+      <span
+        title={detail ?? undefined}
+        className="border border-verdict-allow/30 bg-verdict-allow/10 px-2 py-0.5 font-machine text-[10px] tracking-wide text-ink uppercase"
+      >
+        Connected
+      </span>
+    );
+  }
+  return (
+    <span
+      title={detail ?? undefined}
+      className="border border-verdict-block/30 bg-verdict-block/10 px-2 py-0.5 font-machine text-[10px] tracking-wide text-verdict-block uppercase"
+    >
+      Failed
+    </span>
+  );
+}
 
 function IntegrationRow({
   config,
@@ -126,16 +168,15 @@ function IntegrationRow({
           </span>
           <div>
             <p className="text-[13.5px] font-medium text-ink">{config.title}</p>
-            <p className="text-[12px] text-slate">
-              {integration ? integration.label : config.description}
-            </p>
+            <p className="text-[12px] text-slate">{integration ? integration.label : config.description}</p>
+            {integration?.status === "failed" && integration.statusDetail && (
+              <p className="mt-0.5 text-[11.5px] text-verdict-block">{integration.statusDetail}</p>
+            )}
           </div>
         </div>
         {integration ? (
           <span className="flex items-center gap-2">
-            <span className="rounded-[var(--radius-chip)] border border-verdict-allow/30 bg-verdict-allow/10 px-2 py-0.5 font-machine text-[10px] tracking-wide text-ink uppercase">
-              Connected
-            </span>
+            <StatusBadge status={integration.status} detail={integration.statusDetail} />
             <button
               onClick={handleDisconnect}
               className="flex items-center gap-1.5 border border-rule px-2.5 py-1.5 text-[12px] font-medium text-slate hover:border-verdict-block/40 hover:text-verdict-block"
@@ -177,7 +218,10 @@ function IntegrationRow({
               Cancel
             </Button>
           </div>
-          <p className="mt-2 text-[11.5px] text-slate">Mock console — nothing external is actually contacted.</p>
+          <p className="mt-2 text-[11.5px] text-slate">
+            We'll send a real test {config.kind === "pagerduty" ? "event" : "message"} right after connecting to
+            confirm it works.
+          </p>
         </form>
       )}
     </div>
@@ -191,6 +235,8 @@ function WebhooksCard() {
   const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [revealedSecret, setRevealedSecret] = useState<{ webhookId: string; secret: string } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   async function refresh() {
     setWebhooks(await listMyWebhooks());
@@ -198,6 +244,14 @@ function WebhooksCard() {
 
   useEffect(() => {
     refresh();
+  }, []);
+
+  useEffect(() => {
+    return subscribeToOrgEvents((event) => {
+      if (event.type === "webhook.status") {
+        refresh();
+      }
+    });
   }, []);
 
   function toggleEvent(event: string) {
@@ -209,7 +263,8 @@ function WebhooksCard() {
     setError(null);
     setSubmitting(true);
     try {
-      await createMyWebhook({ url, events: selectedEvents });
+      const webhook = await createMyWebhook({ url, events: selectedEvents });
+      setRevealedSecret({ webhookId: webhook.id, secret: webhook.signingSecret });
       setUrl("");
       setSelectedEvents([]);
       setCreating(false);
@@ -219,6 +274,13 @@ function WebhooksCard() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  async function handleCopySecret() {
+    if (!revealedSecret) return;
+    await navigator.clipboard.writeText(revealedSecret.secret);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
   }
 
   async function handleDelete(id: string) {
@@ -287,7 +349,35 @@ function WebhooksCard() {
               Cancel
             </Button>
           </div>
+          <p className="mt-2 text-[11.5px] text-slate">
+            We'll send a real HMAC-signed test delivery right after this is created to confirm it works.
+          </p>
         </form>
+      )}
+
+      {revealedSecret && (
+        <div className="border-b border-rule bg-signal/5 px-5 py-4">
+          <p className="text-[12.5px] font-medium text-ink">
+            Signing secret — use this to verify the <code className="font-machine">X-AgentGuard-Signature</code>{" "}
+            header on deliveries.
+          </p>
+          <div className="mt-2 flex items-center gap-2">
+            <code className="flex-1 overflow-x-auto border border-rule bg-paper px-3 py-2 font-machine text-[12.5px] text-ink">
+              {revealedSecret.secret}
+            </code>
+            <button
+              type="button"
+              onClick={handleCopySecret}
+              aria-label="Copy signing secret"
+              className="flex size-9 shrink-0 items-center justify-center border border-rule text-slate hover:text-ink"
+            >
+              {copied ? <Check className="size-[15px] text-verdict-allow" /> : <Copy className="size-[15px]" />}
+            </button>
+          </div>
+          <Button variant="secondary" size="sm" className="mt-3" onClick={() => setRevealedSecret(null)}>
+            Done
+          </Button>
+        </div>
       )}
 
       <div className="divide-y divide-rule">
@@ -298,8 +388,14 @@ function WebhooksCard() {
         {webhooks?.map((w) => (
           <div key={w.id} className="flex items-center justify-between gap-4 px-5 py-3.5">
             <div>
-              <p className="font-machine text-[12.5px] text-ink">{w.url}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-machine text-[12.5px] text-ink">{w.url}</p>
+                <StatusBadge status={w.status} detail={w.statusDetail} />
+              </div>
               <p className="mt-0.5 text-[12px] text-slate">{w.events.join(", ")}</p>
+              {w.status === "failed" && w.statusDetail && (
+                <p className="mt-0.5 text-[11.5px] text-verdict-block">{w.statusDetail}</p>
+              )}
             </div>
             <button
               onClick={() => handleDelete(w.id)}
@@ -312,7 +408,8 @@ function WebhooksCard() {
       </div>
 
       <p className="border-t border-rule px-5 py-3 text-[12px] text-slate">
-        No deliveries yet — the delivery log appears here once traffic starts.
+        The status above is the connection test's result. Live event deliveries will start appearing here once
+        policy enforcement is running.
       </p>
     </Card>
   );
@@ -329,12 +426,20 @@ function IntegrationsPage() {
     refresh();
   }, []);
 
+  useEffect(() => {
+    return subscribeToOrgEvents((event) => {
+      if (event.type === "integration.status") {
+        refresh();
+      }
+    });
+  }, []);
+
   function findFor(kind: IntegrationKind) {
     return integrations?.find((i) => i.kind === kind);
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-8">
+    <div className="mx-auto max-w-7xl px-5 py-8">
       <h1 className="text-[22px] font-bold tracking-[-0.01em] text-ink">Integrations</h1>
       <p className="mt-1 text-[13.5px] text-slate">Connect AgentGuard to the rest of your stack.</p>
 

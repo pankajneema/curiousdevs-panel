@@ -2,41 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, Link } from "@tanstack/react-router";
 import { Search, Bell, ChevronDown, LogOut, User } from "lucide-react";
 import { logout, type Session } from "@/lib/api";
-import { useEnvironment } from "@/lib/environment";
-import type { Environment } from "@/lib/types";
-
-const environments: Environment[] = ["DEV", "STAGING", "PROD"];
-
-function EnvSwitcher() {
-  const { environment, setEnvironment } = useEnvironment();
-  return (
-    <div className="flex border border-rule" role="group" aria-label="Environment">
-      {environments.map((env) => {
-        const isProd = env === "PROD";
-        const isActive = environment === env;
-        return (
-          <button
-            key={env}
-            type="button"
-            onClick={() => setEnvironment(env)}
-            aria-pressed={isActive}
-            className={[
-              "px-2.5 py-1.5 font-machine text-[11px] tracking-wide transition-colors duration-[var(--dur-fast)]",
-              "not-last:border-r not-last:border-rule",
-              isActive && isProd
-                ? "bg-verdict-block text-paper"
-                : isActive
-                  ? "bg-ink text-paper"
-                  : "bg-paper text-slate hover:text-ink",
-            ].join(" ")}
-          >
-            {env}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 function useClickOutside(onOutside: () => void) {
   const ref = useRef<HTMLDivElement>(null);
@@ -164,8 +129,6 @@ export function Header({ session }: { session: Session }) {
 
   return (
     <header className="flex h-16 shrink-0 items-center justify-end gap-3 border-b border-rule bg-paper px-5">
-      <EnvSwitcher />
-
       <div className="relative w-64">
         <Search className="pointer-events-none absolute inset-y-0 left-0 my-auto ml-2.5 size-[15px] text-slate" />
         <input

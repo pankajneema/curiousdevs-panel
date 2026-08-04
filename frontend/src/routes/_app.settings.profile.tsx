@@ -90,7 +90,7 @@ function PersonalInfoPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-8">
+    <div className="mx-auto max-w-7xl px-5 py-8">
       <p className="text-[13.5px] text-slate">Your name, photo and contact details, visible to your team.</p>
 
       <Card className="mt-6 p-6">

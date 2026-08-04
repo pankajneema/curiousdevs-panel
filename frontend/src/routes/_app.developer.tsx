@@ -268,7 +268,7 @@ function ApiKeysCard() {
 
 function DeveloperPage() {
   return (
-    <div className="mx-auto max-w-3xl px-6 py-8">
+    <div className="mx-auto max-w-7xl px-5 py-8">
       <h1 className="text-[22px] font-bold tracking-[-0.01em] text-ink">API & developer</h1>
       <p className="mt-1 text-[13.5px] text-slate">Programmatic access to this organization.</p>
       <div className="mt-6">

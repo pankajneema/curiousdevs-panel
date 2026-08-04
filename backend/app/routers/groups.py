@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 from sqlalchemy import select
 
+from app.audit import record
 from app.deps import CurrentUser, DbSession
 from app.errors import api_error
 from app.models import Group, User
@@ -32,14 +33,28 @@ def create_group(payload: CreateGroupIn, current_user: CurrentUser, db: DbSessio
         raise api_error("Name this group.", "name")
 
     group = Group(organization_id=current_user.organization_id, name=name)
+
+    members: list[User] = []
+    if payload.member_user_ids:
+        members = list(
+            db.scalars(
+                select(User).where(
+                    User.id.in_(payload.member_user_ids), User.organization_id == current_user.organization_id
+                )
+            ).all()
+        )
     # The owner has access to everything anyway -- default them into every
     # new group rather than starting empty with no obvious way in.
     owner = db.scalar(
         select(User).where(User.organization_id == current_user.organization_id, User.role == "owner")
     )
-    if owner:
-        group.members.append(owner)
+    if owner and owner not in members:
+        members.append(owner)
+
+    group.members = members
     db.add(group)
+    db.flush()  # assigns group.id so the audit entry below can reference it
+    record(db, current_user, "group.created", "group", group.id, name, f"Created group “{name}”")
     db.commit()
     db.refresh(group)
     return _to_out(group)
@@ -49,6 +64,7 @@ def create_group(payload: CreateGroupIn, current_user: CurrentUser, db: DbSessio
 def delete_group(group_id: str, current_user: CurrentUser, db: DbSession) -> None:
     group = db.get(Group, group_id)
     if group and group.organization_id == current_user.organization_id:
+        record(db, current_user, "group.deleted", "group", group.id, group.name, f"Deleted group “{group.name}”")
         db.delete(group)
         db.commit()
 
@@ -63,6 +79,10 @@ def update_group_members(group_id: str, payload: UpdateGroupMembersIn, current_u
         select(User).where(User.id.in_(payload.member_user_ids), User.organization_id == current_user.organization_id)
     ).all()
     group.members = list(members)
+    record(
+        db, current_user, "group.members_changed", "group", group.id, group.name,
+        f"Updated “{group.name}” membership to {len(members)} member(s)",
+    )
     db.commit()
     db.refresh(group)
     return _to_out(group)

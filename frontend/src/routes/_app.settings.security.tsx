@@ -446,7 +446,7 @@ function SecurityPage() {
   const currentEvent = events?.[0];
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-8">
+    <div className="mx-auto max-w-7xl px-5 py-8">
       <p className="text-[13.5px] text-slate">Password, sessions and stronger sign-in methods.</p>
 
       <div className="mt-6 flex flex-col gap-6">

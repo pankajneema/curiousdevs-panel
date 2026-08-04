@@ -27,18 +27,9 @@ BUILT_IN_ROLES: list[dict] = [
     },
     {
         "id": "security_admin",
-        "name": "Security admin",
-        "description": "Manages agents, policies, evidence and approvals.",
-        "permissions": [
-            "agents.view",
-            "agents.manage",
-            "policies.view",
-            "policies.manage",
-            "approvals.view",
-            "approvals.decide",
-            "evidence.view",
-            "evidence.export",
-        ],
+        "name": "Admin",
+        "description": "Full access like Owner, except it can't change or remove the Owner, or hand ownership to anyone else.",
+        "permissions": _ALL_PERMISSIONS,
     },
     {
         "id": "approver",

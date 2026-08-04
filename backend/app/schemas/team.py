@@ -12,6 +12,8 @@ class InvitationOut(CamelModel):
     invited_by_user_id: str
     invited_at: datetime
     status: str
+    email_status: str
+    email_sent_at: datetime | None
 
 
 class TeamOut(CamelModel):
@@ -26,3 +28,15 @@ class InviteMemberIn(CamelModel):
 
 class UpdateMemberRoleIn(CamelModel):
     role: str
+
+
+class PublicInvitationOut(CamelModel):
+    email: str
+    role: str
+    organization_name: str
+
+
+class AcceptInvitationIn(CamelModel):
+    name: str
+    username: str
+    password: str

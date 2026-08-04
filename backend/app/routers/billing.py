@@ -79,6 +79,9 @@ def add_payment_method(payload: AddPaymentMethodIn, current_user: CurrentUser, d
         raise api_error("Enter a valid expiry date.", "expiry")
     if not re.fullmatch(r"\d{3,4}", payload.cvc):
         raise api_error("Enter a valid security code.", "cvc")
+    holder_name = payload.holder_name.strip()
+    if len(holder_name) < 1:
+        raise api_error("Enter the name on the card.", "holderName")
 
     existing = db.get(PaymentMethod, current_user.organization_id)
     if existing:
@@ -91,6 +94,7 @@ def add_payment_method(payload: AddPaymentMethodIn, current_user: CurrentUser, d
         last4=digits[-4:],
         exp_month=payload.exp_month,
         exp_year=payload.exp_year,
+        holder_name=holder_name,
     )
     db.add(method)
     db.commit()

@@ -10,7 +10,7 @@ export function ComingSoon({
   description: string;
 }) {
   return (
-    <div className="mx-auto flex max-w-5xl flex-col items-start px-6 py-8">
+    <div className="mx-auto flex max-w-7xl flex-col items-start px-5 py-8">
       <h1 className="text-[22px] font-bold tracking-[-0.01em] text-ink">{title}</h1>
       <div className="mt-8 flex w-full flex-col items-center gap-3 border border-dashed border-rule px-6 py-16 text-center">
         <span className="flex size-11 items-center justify-center bg-surface-2 text-slate">

@@ -17,3 +17,9 @@ class Webhook(Base):
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     signing_secret: Mapped[str] = mapped_column(String, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+
+    # Set by a background task right after creation, which sends a real
+    # signed test delivery to the endpoint.
+    status: Mapped[str] = mapped_column(String, nullable=False, default="pending")  # pending|verified|failed
+    status_detail: Mapped[str | None] = mapped_column(String, nullable=True)
+    checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

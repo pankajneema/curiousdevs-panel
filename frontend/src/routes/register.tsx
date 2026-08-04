@@ -1,12 +1,19 @@
 import { useState, type FormEvent } from "react";
 import { createFileRoute, redirect, useNavigate, Link } from "@tanstack/react-router";
-import { Mail, Lock, Eye, EyeOff, User, AtSign, Building2, ShieldCheck, SlidersHorizontal, FileClock } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, User, AtSign, Building2, Globe, ShieldCheck, SlidersHorizontal, FileClock } from "lucide-react";
 import { Logo, Wordmark } from "@/components/Logo";
 import { Card } from "@/components/ui/Card";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { ApiError, getStoredSession, register } from "@/lib/api";
+import type { DataResidency } from "@/lib/types";
+
+const dataResidencyOptions: { value: DataResidency; label: string }[] = [
+  { value: "in", label: "India" },
+  { value: "us", label: "United States" },
+  { value: "eu", label: "European Union" },
+];
 
 export const Route = createFileRoute("/register")({
   beforeLoad: () => {
@@ -28,6 +35,7 @@ function RegisterPage() {
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [organizationName, setOrganizationName] = useState("");
+  const [dataResidency, setDataResidency] = useState<DataResidency>("in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -41,7 +49,7 @@ function RegisterPage() {
     setFieldErrors({});
     setSubmitting(true);
     try {
-      await register({ name, username, organizationName, email, password });
+      await register({ name, username, organizationName, email, password, dataResidency });
       await navigate({ to: "/" });
     } catch (err) {
       if (err instanceof ApiError && err.field) {
@@ -141,6 +149,31 @@ function RegisterPage() {
                 invalid={Boolean(fieldErrors.organizationName)}
                 required
               />
+            </Field>
+
+            <Field
+              label="Data residency"
+              htmlFor="dataResidency"
+              hint="Fixed once your organization is created."
+            >
+              <div className="relative">
+                <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate">
+                  <Globe className="size-[17px]" />
+                </span>
+                <select
+                  id="dataResidency"
+                  name="dataResidency"
+                  value={dataResidency}
+                  onChange={(e) => setDataResidency(e.target.value as DataResidency)}
+                  className="h-11 w-full rounded-[var(--radius-control)] border border-rule bg-paper pr-3.5 pl-10 text-[15px] text-ink focus:border-signal focus:outline-none focus:ring-2 focus:ring-signal/30"
+                >
+                  {dataResidencyOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </Field>
 
             <Field label="Work email" htmlFor="email" error={fieldErrors.email}>

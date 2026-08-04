@@ -19,7 +19,3 @@ class UpdateAvatarIn(CamelModel):
 class ChangePasswordIn(CamelModel):
     current_password: str
     new_password: str
-
-
-class UpdateOrganizationIn(CamelModel):
-    name: str

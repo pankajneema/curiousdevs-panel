@@ -119,7 +119,7 @@ function RolesPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-8">
+    <div className="mx-auto max-w-7xl px-5 py-8">
       <Card className="p-0">
         <div className="border-b border-rule px-5 py-3">
           <p className="text-[13px] font-semibold text-ink">Built-in roles</p>

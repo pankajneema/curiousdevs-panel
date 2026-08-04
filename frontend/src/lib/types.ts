@@ -160,12 +160,14 @@ export interface User {
   lastActiveAt: string | null;
 }
 
+export type DataResidency = "us" | "eu" | "in";
+
 export interface Organization {
   id: string;
   name: string;
   domain: string;
   domainVerified: boolean;
-  dataResidency: "us" | "eu" | "in";
+  dataResidency: DataResidency;
   createdAt: string;
 }
 
@@ -185,7 +187,9 @@ export interface Invitation {
   role: RoleId;
   invitedByUserId: string;
   invitedAt: string;
-  status: "pending" | "revoked";
+  status: "pending" | "revoked" | "accepted";
+  emailStatus: "pending" | "sent" | "failed";
+  emailSentAt: string | null;
 }
 
 // ─── Custom roles & permissions ────────────────────────────────────────
@@ -237,12 +241,18 @@ export interface ApiKey {
   createdByUserId: string;
 }
 
+export type ConnectionStatus = "pending" | "verified" | "failed";
+
 export interface Webhook {
   id: string;
   url: string;
   events: string[];
   enabled: boolean;
   createdAt: string;
+  signingSecret: string;
+  status: ConnectionStatus;
+  statusDetail: string | null;
+  checkedAt: string | null;
 }
 
 // ─── Integrations ──────────────────────────────────────────────────────
@@ -257,6 +267,9 @@ export interface Integration {
    * integration key, endpoint, or provider + path. */
   label: string;
   connectedAt: string;
+  status: ConnectionStatus;
+  statusDetail: string | null;
+  checkedAt: string | null;
 }
 
 // ─── Security & sessions (console-specific) ───────────────────────────────
@@ -309,6 +322,7 @@ export interface PaymentMethod {
   last4: string;
   expMonth: number;
   expYear: number;
+  holderName: string;
 }
 
 // ─── Agent registry (Console UI Brief Part 3 §2) ──────────────────────────
@@ -321,9 +335,9 @@ export interface Agent {
   id: string;
   name: string;
   purpose: string;
-  ownerUserId: string;
+  ownerUserId: string | null;
   environment: Environment;
-  connectionMethod: ConnectionMethod;
+  connectionMethods: ConnectionMethod[];
   status: AgentStatus;
   riskBand: RiskBand;
   hasLethalTrifecta: boolean;
@@ -332,6 +346,18 @@ export interface Agent {
   createdAt: string;
   lastSeenAt: string | null;
   callVolume24h: number;
+}
+
+export type PolicyStatus = "draft" | "active";
+
+export interface Policy {
+  id: string;
+  organizationId: string;
+  name: string;
+  description: string;
+  status: PolicyStatus;
+  attachedAgentCount: number;
+  createdAt: string;
 }
 
 // ─── Policy / rules (Console UI Brief Part 3 §4) ──────────────────────────
@@ -368,27 +394,77 @@ export interface Tool {
   lastSeenAt: string;
 }
 
+export type McpServerStatus = "pending" | "reachable" | "unreachable" | "local";
+export type McpTransport = "http" | "stdio";
+
 export interface McpServer {
   id: string;
   name: string;
-  transport: "stdio" | "http";
-  endpoint: string;
-  publisher: string;
-  verified: boolean;
-  toolsExposed: number;
-  agentsConnected: number;
-  lastContactAt: string;
+  transport: McpTransport;
+  endpoint: string | null;
+  command: string | null;
+  args: string[];
+  description: string;
+  status: McpServerStatus;
+  statusDetail: string | null;
+  checkedAt: string | null;
+  createdAt: string;
+  usedByAgentCount: number;
 }
 
-// ─── Approvals (Console UI Brief Part 3 §9) ───────────────────────────────
+// ─── Audit log ─────────────────────────────────────────────────────────
+
+export interface AuditLogEntry {
+  id: string;
+  actorUserId: string | null;
+  actorName: string;
+  action: string;
+  targetType: string;
+  targetId: string | null;
+  targetLabel: string;
+  summary: string;
+  createdAt: string;
+}
+
+// ─── Monitoring ────────────────────────────────────────────────────────
+
+export interface MonitoringHourlyBucket {
+  hourStart: string;
+  callCount: number;
+}
+
+export interface MonitoringAgentRow {
+  agentId: string;
+  agentName: string;
+  environment: Environment;
+  status: AgentStatus;
+  callVolume24h: number;
+  lastSeenAt: string | null;
+}
+
+export interface MonitoringOverview {
+  totalCalls24h: number;
+  activeAgents24h: number;
+  idleAgents: number;
+  hourlyBuckets: MonitoringHourlyBucket[];
+  agents: MonitoringAgentRow[];
+}
+
+// ─── Approvals ─────────────────────────────────────────────────────────
+
+export type ApprovalStatus = "pending" | "approved" | "denied" | "expired";
 
 export interface ApprovalRequest {
   id: string;
-  callContext: CallContext;
+  agentId: string;
+  agentName: string;
+  actionSummary: string;
+  context: string;
+  status: ApprovalStatus;
   requestedAt: string;
-  expiresAt: string;
-  status: "pending" | "approved" | "denied" | "delegated" | "expired";
+  expiresAt: string | null;
   decidedByUserId: string | null;
+  decidedByName: string | null;
   decidedAt: string | null;
-  reason: string | null;
+  decisionReason: string | null;
 }

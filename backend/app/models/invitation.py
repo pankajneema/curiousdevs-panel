@@ -1,3 +1,4 @@
+import secrets
 from datetime import UTC, datetime
 
 from sqlalchemy import DateTime, ForeignKey, String
@@ -17,3 +18,9 @@ class Invitation(Base):
     invited_by_user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     invited_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     status: Mapped[str] = mapped_column(String, nullable=False, default="pending")
+
+    # The accept-invite link's identifier — separate from `id` so a leaked
+    # invitation id (e.g. in a revoke API call) can't be used to accept it.
+    token: Mapped[str] = mapped_column(String, unique=True, index=True, default=lambda: secrets.token_urlsafe(24))
+    email_status: Mapped[str] = mapped_column(String, nullable=False, default="pending")  # pending | sent | failed
+    email_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

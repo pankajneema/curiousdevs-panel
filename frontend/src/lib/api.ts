@@ -4,22 +4,34 @@
  * real FastAPI + Postgres backend in backend/.
  */
 import { useSyncExternalStore } from "react";
-import { api, ApiError } from "./apiClient";
+import { API_BASE_URL, api, ApiError } from "./apiClient";
 import { BUILT_IN_ROLES } from "./roles";
 import type {
   Agent,
+  AgentStatus,
   ApiKey,
+  ApprovalRequest,
+  AuditLogEntry,
   BillingInfo,
+  ConnectionMethod,
   CustomRole,
+  DataResidency,
+  Environment,
   Group,
   Integration,
   Invitation,
   LoginEvent,
+  McpServer,
+  McpTransport,
+  MonitoringOverview,
   NotificationPrefs,
   Passkey,
   PaymentMethod,
   Permission,
   Plan,
+  Policy,
+  PolicyStatus,
+  RiskBand,
   RoleId,
   Session,
   User,
@@ -96,6 +108,7 @@ export interface RegisterInput {
   email: string;
   password: string;
   organizationName: string;
+  dataResidency: DataResidency;
 }
 
 export async function register(input: RegisterInput): Promise<Session> {
@@ -136,6 +149,139 @@ export async function listAgents(): Promise<Agent[]> {
   return api.get<Agent[]>("/agents");
 }
 
+export async function getAgent(id: string): Promise<Agent> {
+  return api.get<Agent>(`/agents/${id}`);
+}
+
+export interface CreateAgentInput {
+  name: string;
+  purpose: string;
+  environment: Environment;
+  connectionMethods: ConnectionMethod[];
+  riskBand: RiskBand;
+  hasLethalTrifecta: boolean;
+  ownerUserId: string | null;
+  expiresAt: string | null;
+}
+
+export async function createAgent(input: CreateAgentInput): Promise<Agent> {
+  return api.post<Agent>("/agents", input);
+}
+
+export type UpdateAgentInput = CreateAgentInput;
+
+export async function updateAgent(id: string, input: UpdateAgentInput): Promise<Agent> {
+  return api.patch<Agent>(`/agents/${id}`, input);
+}
+
+export async function updateAgentStatus(id: string, status: AgentStatus): Promise<Agent> {
+  return api.patch<Agent>(`/agents/${id}/status`, { status });
+}
+
+export async function getAgentPolicies(agentId: string): Promise<Policy[]> {
+  return api.get<Policy[]>(`/agents/${agentId}/policies`);
+}
+
+export async function setAgentPolicies(agentId: string, policyIds: string[]): Promise<Policy[]> {
+  return api.put<Policy[]>(`/agents/${agentId}/policies`, { policyIds });
+}
+
+export async function getAgentMcpServers(agentId: string): Promise<McpServer[]> {
+  return api.get<McpServer[]>(`/agents/${agentId}/mcp-servers`);
+}
+
+// ─── Policies ──────────────────────────────────────────────────────────
+
+export async function listPolicies(): Promise<Policy[]> {
+  return api.get<Policy[]>("/policies");
+}
+
+export interface PolicyInput {
+  name: string;
+  description: string;
+  status: PolicyStatus;
+}
+
+export async function createPolicy(input: PolicyInput): Promise<Policy> {
+  return api.post<Policy>("/policies", input);
+}
+
+export async function updatePolicy(id: string, input: PolicyInput): Promise<Policy> {
+  return api.patch<Policy>(`/policies/${id}`, input);
+}
+
+export async function deletePolicy(id: string): Promise<void> {
+  await api.delete<void>(`/policies/${id}`);
+}
+
+// ─── MCP servers ───────────────────────────────────────────────────────
+
+export async function listMcpServers(): Promise<McpServer[]> {
+  return api.get<McpServer[]>("/mcp-servers");
+}
+
+export interface McpServerInput {
+  name: string;
+  transport: McpTransport;
+  endpoint: string | null;
+  command: string | null;
+  args: string[];
+  description: string;
+}
+
+export async function createMcpServer(input: McpServerInput): Promise<McpServer> {
+  return api.post<McpServer>("/mcp-servers", input);
+}
+
+export async function updateMcpServer(id: string, input: McpServerInput): Promise<McpServer> {
+  return api.patch<McpServer>(`/mcp-servers/${id}`, input);
+}
+
+export async function reverifyMcpServer(id: string): Promise<McpServer> {
+  return api.post<McpServer>(`/mcp-servers/${id}/verify`);
+}
+
+export async function importMcpServers(config: string): Promise<McpServer[]> {
+  return api.post<McpServer[]>("/mcp-servers/import", { config });
+}
+
+export async function deleteMcpServer(id: string): Promise<void> {
+  await api.delete<void>(`/mcp-servers/${id}`);
+}
+
+// ─── Audit log ─────────────────────────────────────────────────────────
+
+export async function listAuditLog(
+  filters: { targetType?: string | undefined; q?: string | undefined } = {},
+): Promise<AuditLogEntry[]> {
+  const params = new URLSearchParams();
+  if (filters.targetType) params.set("target_type", filters.targetType);
+  if (filters.q) params.set("q", filters.q);
+  const qs = params.toString();
+  return api.get<AuditLogEntry[]>(`/audit-log${qs ? `?${qs}` : ""}`);
+}
+
+// ─── Monitoring ────────────────────────────────────────────────────────
+
+export async function getMonitoringOverview(): Promise<MonitoringOverview> {
+  return api.get<MonitoringOverview>("/monitoring/overview");
+}
+
+// ─── Approvals ─────────────────────────────────────────────────────────
+
+export async function listApprovalRequests(status?: string): Promise<ApprovalRequest[]> {
+  const qs = status ? `?status=${encodeURIComponent(status)}` : "";
+  return api.get<ApprovalRequest[]>(`/approval-requests${qs}`);
+}
+
+export async function decideApprovalRequest(
+  id: string,
+  decision: "approved" | "denied",
+  reason?: string,
+): Promise<ApprovalRequest> {
+  return api.post<ApprovalRequest>(`/approval-requests/${id}/decide`, { decision, reason: reason || null });
+}
+
 // ─── Profile ───────────────────────────────────────────────────────────
 
 export interface UpdateProfileInput {
@@ -172,11 +318,35 @@ export async function changePassword(input: ChangePasswordInput): Promise<void> 
 
 export interface UpdateOrganizationInput {
   name: string;
+  domain: string;
 }
 
 export async function updateOrganization(input: UpdateOrganizationInput): Promise<Session> {
   const session = await api.patch<Session>("/organization", input);
   return storeSession(session);
+}
+
+export interface DomainVerification {
+  domain: string;
+  domainVerified: boolean;
+  recordName: string;
+  recordValue: string;
+}
+
+export async function getDomainVerification(): Promise<DomainVerification> {
+  return api.get<DomainVerification>("/organization/domain-verification");
+}
+
+export async function verifyDomain(): Promise<DomainVerification> {
+  return api.post<DomainVerification>("/organization/domain-verification/verify");
+}
+
+export async function revokeAllAgents(): Promise<{ revokedCount: number }> {
+  return api.post<{ revokedCount: number }>("/organization/revoke-all-agents");
+}
+
+export async function deleteOrganization(confirmName: string): Promise<void> {
+  await api.delete<void>("/organization", { confirmName });
 }
 
 // ─── Team ──────────────────────────────────────────────────────────────
@@ -206,6 +376,54 @@ export async function updateMemberRole(userId: string, role: RoleId): Promise<vo
   await api.patch<void>(`/team/members/${userId}/role`, { role });
 }
 
+export type OrgEvent =
+  | { type: "invitation.email_status"; invitationId: string; status: "sent" | "failed" }
+  | { type: "integration.status"; integrationId: string; status: "verified" | "failed" }
+  | { type: "webhook.status"; webhookId: string; status: "verified" | "failed" }
+  | { type: "mcp_server.status"; mcpServerId: string; status: "reachable" | "unreachable" }
+  | { type: "approval_request.status"; approvalRequestId: string; status: string };
+
+/** Live, org-wide push — invite email delivery, integration/webhook
+ * connection checks — avoids polling. Backed by one SSE stream per org;
+ * EventSource can't set an Authorization header, so the token travels as a
+ * query param on this one connection. */
+export function subscribeToOrgEvents(onEvent: (event: OrgEvent) => void): () => void {
+  const token = getStoredSession()?.token;
+  if (!token) return () => {};
+  const source = new EventSource(`${API_BASE_URL}/team/events?token=${encodeURIComponent(token)}`);
+  source.onmessage = (e) => {
+    try {
+      onEvent(JSON.parse(e.data) as OrgEvent);
+    } catch {
+      // ignore malformed/keep-alive frames
+    }
+  };
+  return () => source.close();
+}
+
+// ─── Invitations (public accept-invite flow) ──────────────────────────
+
+export interface PublicInvitation {
+  email: string;
+  role: RoleId;
+  organizationName: string;
+}
+
+export async function getInvitation(token: string): Promise<PublicInvitation> {
+  return api.get<PublicInvitation>(`/invitations/${token}`);
+}
+
+export interface AcceptInvitationInput {
+  name: string;
+  username: string;
+  password: string;
+}
+
+export async function acceptInvitation(token: string, input: AcceptInvitationInput): Promise<Session> {
+  const session = await api.post<Session>(`/invitations/${token}/accept`, input);
+  return storeSession(session);
+}
+
 // ─── Roles ─────────────────────────────────────────────────────────────
 
 export async function listRoles(): Promise<{ builtIn: typeof BUILT_IN_ROLES; custom: CustomRole[] }> {
@@ -231,8 +449,8 @@ export async function listGroups(): Promise<Group[]> {
   return api.get<Group[]>("/groups");
 }
 
-export async function createGroup(name: string): Promise<Group> {
-  return api.post<Group>("/groups", { name });
+export async function createGroup(name: string, memberUserIds: string[] = []): Promise<Group> {
+  return api.post<Group>("/groups", { name, memberUserIds });
 }
 
 export async function deleteGroup(id: string): Promise<void> {
@@ -262,6 +480,7 @@ export interface AddPaymentMethodInput {
   expMonth: number;
   expYear: number;
   cvc: string;
+  holderName: string;
 }
 
 export async function addPaymentMethod(input: AddPaymentMethodInput): Promise<PaymentMethod> {
